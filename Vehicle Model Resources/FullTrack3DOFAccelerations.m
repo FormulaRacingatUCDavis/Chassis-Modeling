@@ -3,7 +3,7 @@ function [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot] = ...
         Wheelbase, TrackWidth, Steer, ...                         % Geometry
         Mass, YawInertia, CoG, ...                                % Inertia
         LongVel, LatVel, YawVel )                                 % Velocities
-%% FullTrack3DOFAccelerations - Full Track Acceleration Computation
+%% FullTrack3DOFAccelerations - Full Track Planar Accelerations
 % Computes planar motion accelerations for a 3DOF full track chassis model
 % 
 % Inputs:
@@ -36,7 +36,7 @@ function [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot] = ...
 % Blake Christierson (bechristierson@ucdavis.edu) [Sep 2018 - Jun 2021] 
 % Tristan Pham       (atlpham@ucdavis.edu)        [Oct 2020 - ???     ]
 % 
-% Last Updated: 27-May-2021
+% Last Updated: 30-May-2021
 
 %% Test Case
 if nargin == 0
@@ -52,7 +52,7 @@ if nargin == 0
     TrackWidth = 1.22*ones(1,2);
     Steer      = [18, 15, 1, -1];
     
-    Mass       = 275;  
+    Mass       = 275;   
     YawInertia = 130; 
     CoG        = [(0.47-0.5)*Wheelbase, 0, 0.25];
     
@@ -65,9 +65,28 @@ if nargin == 0
             TFx, TFy, TMz, AFx, AFy, AMz, ...
             Wheelbase, TrackWidth, Steer, ... 
             Mass, YawInertia, CoG, ... 
-            LongVel, LatVel, YawVel );
+            LongVel, LatVel, YawVel ) %#ok<NOPRT>
     
     return;
 end
 
 %% Computations
+%%% Tire Positions (n,4,3 numeric)
+TirePos = cat( 3, Wheelbase/2 + [-1, -1, 1, 1].*CoG(:,1), ...
+                  [TrackWidth(:,1).*[1 -1]/2, TrackWidth(:,2).*[1 -1]/2], ...
+                  zeros( size(Steer) ) );
+
+%%% Tire Loads (n,4,3 numeric)
+TireLoad = cat( 3, TFx, TFy, zeros( size(Steer) ) );
+
+%%% Tire Yaw Moment (n,1 numeric)
+TireMoment = cross(TirePos, TireLoad, 3);
+TireMoment = sum( TireMoment(:,:,3) ) + sum(TMz,2);
+
+%%% Chassis Accelerations
+LongAcc = (sum( TFx.*cosd(Steer) - TFy.*sind(Steer), 2 ) + LatVel.*YawVel  - AFx) ./ Mass;
+LatAcc  = (sum( TFy.*cosd(Steer) + TFx.*sind(Steer), 2 ) - LongVel.*YawVel - AFy) ./ Mass;
+YawAcc  = (TireMoment - AMz) ./ YawInertia;
+
+LongAccTot = LongAcc - LatVel .*YawVel;
+LatAccTot  = LatAcc  + LongVel.*YawVel;
