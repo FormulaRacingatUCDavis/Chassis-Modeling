@@ -1,22 +1,37 @@
 function [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot] = ...
-    PlanarModelAcceleration(SteerAngle,LongForce,LatForce,...
-    Mass,WheelBase,PercentFront,TrackWidth)
+    PlanarModelAcceleration(SteerAngle,PercentFront,...
+    TFx, TFy, TMz, AFx, AFy, AMz, ...                             % Loads
+        Wheelbase, TrackWidth, Steer, ...                         % Geometry
+        Mass, YawInertia, CoG, ...                                % Inertia
+        LongVel, LatVel, YawVel )                                 %velocities
 %% Planar Model - Planar Model Acceleration Calculations
 % 
 % Inputs:
-%  SteeringWheelAngle - (n,1 numeric) SteeringWheelAngle {delta} [degrees]
-%  LongForce          - (n,1 numeric) LongitudinalForce  {Fx} [N-m]
-%  LatForce           - (n,1 numeric) Lateral Force      {Fy} [N-m]
-%  Mass               - (n,1 numeric) Mass               {m} [kg]
-%  WheelBase          - (n,1 numeric) Wheel Base         {L} [m]
-%  PercentFront       - (n,1 numeric) Percent Front      {pf} [%]
-%  TrackWidth         - (n,1 numeric) TrackWidth         {tw} [m]
+%   SteeringWheelAngle - (n,1 numeric) SteeringWheelAngle {delta} [degrees]
+%   PercentFront       - (n,1 numeric) Percent Front      {pf} [%]
+%   TFx        - (n,4 numeric) Tire Longitudinal Force {T_F_y}    [N]
+%   TFy        - (n,4 numeric) Tire Lateral Force      {T_F_y}    [N]
+%   TMz        - (n,4 numeric) Tire Aligning Moment    {T_M_z}    [N-m]
+%   AFx        - (n,1 numeric) Aerodynamic Drag Force  {A_F_x}    [N]
+%   AFy        - (n,1 numeric) Aerodynamic Side Force  {A_F_y}    [N]
+%   AMz        - (n,1 numeric) Aerodynamic Yaw Moment  {A_M_z}    [N-m]
+%   Wheelbase  - (n,1 numeric) Wheelbase               {L}        [m]
+%   TrackWidth - (n,2 numeric) Track Width             {t_w}      [m]
+%   Steer      - (n,4 numeric) Tire Steer Angle        {delta}    [deg]
+%   Mass       - (n,1 numeric) Total Vehicle Mass      {m}        [kg]
+%   YawInertia - (n,1 numeric) Vehicle Yaw Inertia     {I_zz}     [kg-m^2]
+%   CoG        - (n,3 numeric) Center of Gravity       {CoG}      [m]
+%   LongVel    - (n,1 numeric) Longitudinal Velocity   {dot{x}}   [m/s]
+%   LatVel     - (n,1 numeric) Lateral Velocity        {dot{y}}   [m/s]
+%   YawVel     - (n,1 numeric) Yaw Velocity            {dot{psi}} [rad/s]
+%   RearSteeringAngle - (n,1 numeric) Rear Steering Angle             {delta} [degrees]
 %
 % Outputs:
-%  RearSteeringAngle - (n,1 numeric) Rear Steering Angle             {delta} [degrees]
-%  LongAccTot        - (n,1 numeric) Total Longitudinal Acceleration {a_x} [m/s^2]
-%  LatAccTot         - (n,1 numeric) Total Lateral Acceleration      {a_y} [m/s^2]
-%  YawAcc            - (n,1 numeric) Yaw Acceleration                {psi_ddot} [rad/s^2]
+%   LongAcc    - (n,1 numeric) Longitudinal Acceleration       {ddot{x}}  [m/s^2]
+%   LatAcc     - (n,1 numeric) Lateral Acceleration            {ddot{y}}  [m/s^2]
+%   YawAcc     - (n,1 numeric) Yaw Acceleration                {ddot{psi} [rad/s^2]
+%   LongAccTot - (n,1 numeric) Total Longitudinal Acceleration {a_x}      [m/s^2]
+%   LatAccTot  - (n,1 numeric) Total Lateral Acceleration      {a_y}      [m/s^2]
 %
 % Notes:
  
@@ -25,25 +40,41 @@ function [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot] = ...
 % Author(s): 
 % Tristan Pham (atlpham@ucdavis.edu) [Sep 2020 - Jun 2021] 
 
-% Last Updated: 24-May-2021
+% Last Updated:31-May-2021
 
 
 %% Test Cases
 if nargin == 0
     %%% Test Inputs
-     SteeringWheelAngle = ; 
-     LongForce= ; 
-     LatForce = ; 
-     Mass = ;
-     WheelBase = ;
-     PercentFront = ;
-     TrackWidth = ;
+     TFx = zeros(1,4);
+    TFy = [250, 250, 0, 0];
+    TMz = zeros(1,4);
+    
+    AFx = -100;
+    AFy = 0;
+    AMz = 0;
+    
+    Wheelbase  = 1.575; 
+    TrackWidth = 1.22*ones(1,2);
+    Steer      = [18, 15, 1, -1];
+    
+    Mass       = 275;  
+    YawInertia = 130; 
+    CoG        = [(0.47-0.5)*Wheelbase, 0, 0.25];
+    
+    LongVel = 15;
+    LatVel  = 0;
+    YawVel  = 0.5;
     
     fprintf('Executing Planar Model() Test Cases: \n');
     
     
-    [RearSteeringAngle, LongAccTot, LatAccTot, YawAcc] = BrakeModel(SteeringWheelAngle,...
-        LongForce,LatForce,Mass,WheelBase,PercentFront,TrackWidth);
+   [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot] = ...
+    PlanarModelAcceleration(SteerAngle,PercentFront,...
+    TFx, TFy, TMz, AFx, AFy, AMz, ...                            
+        Wheelbase, TrackWidth, Steer, ...                         
+        Mass, YawInertia, CoG, ...                                
+        LongVel, LatVel, YawVel )  
     
  % for i = 1:numel()
       %  fprintf('   Steady State Instance %i: \n', i);

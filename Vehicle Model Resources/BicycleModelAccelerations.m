@@ -9,6 +9,7 @@ function [YawAcc,LatAccTot,LongAccTot]= BicycleModelAccelerations(LongForce,...
 %  Mass               - (n,1 numeric) Mass               {m} [kg]
 %  WheelBase          - (n,1 numeric) Wheel Base         {L} [m]
 %  PercentFront       - (n,1 numeric) Percent Front      {pf} [%]
+%
 % Outputs:
 %  YawAcc     - (n,1 numeric) Yaw Acceleration                {psi_ddot} [rad/s^2]
 %  LatAccTot  - (n,1 numeric) Total Lateral Acceleration      {a_x} [m/s^2]
