@@ -3,28 +3,28 @@ function [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot] = ...
     TFx, TFy, TMz, AFx, AFy, AMz, ...                             % Loads
         Wheelbase, TrackWidth, Steer, ...                         % Geometry
         Mass, YawInertia, CoG, ...                                % Inertia
-        LongVel, LatVel, YawVel )                                 %velocities
+        LongVel, LatVel, YawVel )                                 % Velocities
 %% Planar Model - Planar Model Acceleration Calculations
 % 
 % Inputs:
-%   SteeringWheelAngle - (n,1 numeric) SteeringWheelAngle {delta} [degrees]
-%   PercentFront       - (n,1 numeric) Percent Front      {pf} [%]
-%   TFx        - (n,4 numeric) Tire Longitudinal Force {T_F_y}    [N]
-%   TFy        - (n,4 numeric) Tire Lateral Force      {T_F_y}    [N]
-%   TMz        - (n,4 numeric) Tire Aligning Moment    {T_M_z}    [N-m]
-%   AFx        - (n,1 numeric) Aerodynamic Drag Force  {A_F_x}    [N]
-%   AFy        - (n,1 numeric) Aerodynamic Side Force  {A_F_y}    [N]
-%   AMz        - (n,1 numeric) Aerodynamic Yaw Moment  {A_M_z}    [N-m]
-%   Wheelbase  - (n,1 numeric) Wheelbase               {L}        [m]
-%   TrackWidth - (n,2 numeric) Track Width             {t_w}      [m]
-%   Steer      - (n,4 numeric) Tire Steer Angle        {delta}    [deg]
-%   Mass       - (n,1 numeric) Total Vehicle Mass      {m}        [kg]
-%   YawInertia - (n,1 numeric) Vehicle Yaw Inertia     {I_zz}     [kg-m^2]
-%   CoG        - (n,3 numeric) Center of Gravity       {CoG}      [m]
-%   LongVel    - (n,1 numeric) Longitudinal Velocity   {dot{x}}   [m/s]
-%   LatVel     - (n,1 numeric) Lateral Velocity        {dot{y}}   [m/s]
-%   YawVel     - (n,1 numeric) Yaw Velocity            {dot{psi}} [rad/s]
-%   RearSteeringAngle - (n,1 numeric) Rear Steering Angle             {delta} [degrees]
+%   SteeringWheelAngle - (n,1 numeric) SteeringWheelAngle      {delta} [degrees]
+%   PercentFront       - (n,1 numeric) Percent Front           {pf} [%]
+%   TFx                - (n,4 numeric) Tire Longitudinal Force {T_F_y}    [N]
+%   TFy                - (n,4 numeric) Tire Lateral Force      {T_F_y}    [N]
+%   TMz                - (n,4 numeric) Tire Aligning Moment    {T_M_z}    [N-m]
+%   AFx                - (n,1 numeric) Aerodynamic Drag Force  {A_F_x}    [N]
+%   AFy                - (n,1 numeric) Aerodynamic Side Force  {A_F_y}    [N]
+%   AMz                - (n,1 numeric) Aerodynamic Yaw Moment  {A_M_z}    [N-m]
+%   Wheelbase          - (n,1 numeric) Wheelbase               {L}        [m]
+%   TrackWidth         - (n,2 numeric) Track Width             {t_w}      [m]
+%   Steer              - (n,4 numeric) Tire Steer Angle        {delta}    [deg]
+%   Mass               - (n,1 numeric) Total Vehicle Mass      {m}        [kg]
+%   YawInertia         - (n,1 numeric) Vehicle Yaw Inertia     {I_zz}     [kg-m^2]
+%   CoG                - (n,3 numeric) Center of Gravity       {CoG}      [m]
+%   LongVel            - (n,1 numeric) Longitudinal Velocity   {dot{x}}   [m/s]
+%   LatVel             - (n,1 numeric) Lateral Velocity        {dot{y}}   [m/s]
+%   YawVel             - (n,1 numeric) Yaw Velocity            {dot{psi}} [rad/s]
+%   RearSteeringAngle  - (n,1 numeric) Rear Steering Angle     {delta} [degrees]
 %
 % Outputs:
 %   LongAcc    - (n,1 numeric) Longitudinal Acceleration       {ddot{x}}  [m/s^2]
@@ -86,25 +86,31 @@ if nargin == 0
 end
     
 %% Computation
-% Parameters 
-TrackWidth = TrackWidth/39.3700787;
-WheelBase = WheelBase/39.3700787;  
-Mass = Mass/2.20462262;     %Conversions
-a = WheelBase * (1 - PercentFront);     %Because the ceneter or mass is more to there rear so a is longer
+%%% Parameters 
+a = WheelBase * (1 - PercentFront); 
 b = WheelBase * PercentFront;
-YawInertia = Mass * (1.3)^2;  %Cacls
+YawInertia = Mass * (1.3)^2; 
 
-% Steer Angle Calculation
+%%% Tire Positions (n,4,3 numeric)
+TirePos = cat( 3, Wheelbase/2 + [-1, -1, 1, 1].*CoG(:,1), ...
+                  [TrackWidth(:,1).*[1 -1]/2, TrackWidth(:,2).*[1 -1]/2], ...
+                  zeros( size(Steer) ) );
+
+%%% Tire Loads (n,4,3 numeric)
+TireLoad = cat( 3, TFx, TFy, zeros( size(Steer) ) );
+
+%%% Steer Angle Calculation
 RearSteeringAngle = 0.25 * SteeringWheelAngle;  %Steering angle ratio to the rear steergin angle 
 
-% Logitudinal
-LongAccTot = ( LongForce(1).*cosd(RearSteeringAngle) + LongForce(2).*cosd(RearSteeringAngle) - ... 
-        LatForce(1).*sind(RearSteeringAngle) - LatForce(2).*sind(RearSteeringAngle) + LongForce(3) + LongForce(4) ) / Mass; 
-
-% Lateral
-LatAccTot = ( LatForce(1).*cosd(RearSteeringAngle) + LongForce(1).*sind(RearSteeringAngle) + ...
-        LatForce(2).*cosd(RearSteeringAngle) + LongForce(2).*sind(RearSteeringAngle) + LatForce(3) + LatForce(4) ) / Mass;
-
-% Yaw
+%%% Chassis Accelerations
+LongAcc = (sum( TFx.*cosd(Steer) - TFy.*sind(Steer), 2 ) + LatVel.*YawVel  - AFx) ./ Mass;
+LatAcc  = (sum( TFy.*cosd(Steer) + TFx.*sind(Steer), 2 ) - LongVel.*YawVel - AFy) ./ Mass;
 YawAcc = ( a.*( LatForce(1) + LatForce(2) ) - b.*( LatForce(3) + LatForce(4) ) + ...
-            (TrackWidth/2).*( LongForce(2) + LongForce(4) ) - (TrackWidth/2).*( LongForce(1) + LongForce(3) ) ) / YawInertia;
+    (TrackWidth/2).*( LongForce(2) + LongForce(4) ) - (TrackWidth/2).* ...
+    ( LongForce(1) + LongForce(3) ) ) / YawInertia;
+LongAccTot = ( LongForce(1).*cosd(RearSteeringAngle) + LongForce(2).*...
+    cosd(RearSteeringAngle) - LatForce(1).*sind(RearSteeringAngle) - ...
+    LatForce(2).*sind(RearSteeringAngle) + LongForce(3) + LongForce(4) ) / Mass; 
+LatAccTot = ( LatForce(1).*cosd(RearSteeringAngle) + LongForce(1).*...
+    sind(RearSteeringAngle) + LatForce(2).*cosd(RearSteeringAngle) + ...
+    LongForce(2).*sind(RearSteeringAngle) + LatForce(3) + LatForce(4) ) / Mass;
