@@ -12,4 +12,4 @@ Parameter.DampingCoeff = 350;
 
 %% Run Model / Designat Model Input 
 
-Out = sim('QuarterCar.slx');
+Out = sim('QuarterCarModel.slx');
