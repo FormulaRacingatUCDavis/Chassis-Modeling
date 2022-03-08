@@ -1,9 +1,9 @@
-function [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot] = ...
-    FullTrack3DOFAccelerations( TFx, TFy, TMz, AFx, AFy, AMz, ... % Loads
+function [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot, VertAcc] = ...
+    ForceBasedRollCenter6DOFAccelerations( TFx, TFy, TMz, AFx, AFy, AMz, ... % Loads
         Wheelbase, TrackWidth, Steer, ...                         % Geometry
         Mass, YawInertia, CoG, ...                                % Inertia
         LongVel, LatVel, YawVel )                                 % Velocities
-%% FullTrack3DOFAccelerations - Full Track Planar Accelerations
+%% FroceBasedRollCenter6DOFAccelerations - Force Based Roll Center Accelerations
 % Computes planar motion accelerations for a 3DOF full track chassis model
 % 
 % Inputs:
@@ -33,10 +33,9 @@ function [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot] = ...
 % Notes:
 %
 % Author(s): 
-% Blake Christierson (bechristierson@ucdavis.edu) [Sep 2018 - Jun 2021] 
 % Tristan Pham       (atlpham@ucdavis.edu)        [Oct 2020 - ???     ]
 % 
-% Last Updated: 30-May-2021
+% Last Updated: 17-Feburary-2022
 
 %% Test Case
 if nargin == 0
@@ -61,7 +60,7 @@ if nargin == 0
     YawVel  = 0.5;
     
     [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot] = ...
-        FullTrack3DOFAccelerations( ...
+        ForceBasedRollCenter6DOFAccelerations( ...
             TFx, TFy, TMz, AFx, AFy, AMz, ...
             Wheelbase, TrackWidth, Steer, ... 
             Mass, YawInertia, CoG, ... 
@@ -71,6 +70,21 @@ if nargin == 0
 end
 
 %% Computations
+
+%%% Matricies (FIXME)
+x_vector = [x;y;z];
+omega_vector = [roll,yaw,pitch];
+Is = [Ixx_s, 0, -Ixz_s; 0, Iyy_s, 0; -Izx_s, 0, Izz_s];
+
+[sum_Fx;sum_Fy;sum_Fz] = ms.*(x_vector_ddot + cross(omega_vector_dot,x_vector_dot)) + (muf + mur) .* ...
+    ([x_ddot;y_ddot;0] + cross([0;0;psi_dot],[x_dot;y_dot;0]));
+    
+[sum_Mx;sum_My;sum_Mz] = Is .* omega_vector_ddot + cross(omega_vector_dot, Is .* Omega_vector_dot) ...
+    + [0;0;Izz_s.*psi_ddot];
+
+mu(i)*zu_ddot(i) = kt(i).*(zr(i) - zu(i)) - kr(i).*(zu(i)-zc(i)) - ...
+    br(i).*(zu_dot(i)-zc_dot(i));
+
 %%% Tire Positions (n,4,3 numeric)
 TirePos = cat( 3, Wheelbase/2 + [-1, -1, 1, 1].*CoG(:,1), ...
                   [TrackWidth(:,1).*[1 -1]/2, TrackWidth(:,2).*[1 -1]/2], ...
@@ -83,9 +97,31 @@ TireLoad = cat( 3, TFx, TFy, zeros( size(Steer) ) );
 TireMoment = cross(TirePos, TireLoad, 3);
 TireMoment = sum( TireMoment(:,:,3) ) + sum(TMz,2);
 
+%%% Moments
+%Correct a or b
+Mx = sum((TFx.*sind(Steer) + TFy.*cosd(Steer)).*Front_View_Suspension_Arm...
+    - (TFx.*cosd(Steer)-TFy.*sind(Steer)).*tand(Side_View_Jacking_Angle).*tw/2)...
+    - AFy .* (Sprung_COG_Height + z) - AMz - (front_roll_stiffness + rear_roll_stiffness).*roll...
+    - (roll_dampening_coeff_front + roll_dampening_coeff_rear).*roll_speed;
+
+%Correct a or b
+My = sum(-(TFx.*cosd(Steer) - TFy.*sind(Steer)).*Side_View_Suspension_Arm...
+    + (TFx.*sind(Steer) + TFy.*cosd(Steer)).*tand(Front_View_Jacking_Angle).* (a or b) )...
+    + AFx .* (Sprung_COG_Height + z) - AFz.*(a-L/2) - AMy - pitch_stiffness.*pitch - pitch_dampening.*pitch_velocity;
+
+%Positive or negative trackwidth?
+Mz = sum((TFx.*cosd(Steer) - TFy.*sind(Steer)).*(-)tw/2 ...
+    + (TFx.*sind(Steer) + TFy.*cosd(Steer)).*(a or -b) +TMz)...
+    - AFy .* (L/2 - a) - AMz; 
+
 %%% Chassis Accelerations
 LongAcc = ((sum( TFx.*cosd(Steer) - TFy.*sind(Steer), 2 ) - AFx) ./ Mass) + LatVel.*YawVel;
+
 LatAcc  = ((sum( TFy.*cosd(Steer) + TFx.*sind(Steer), 2 ) - AFy) ./ Mass) - LongVel.*YawVel;
+
+VertAcc = (sum(kr + br.*j + (TFx.*cosd(Steer) - TFy.*sind(Steer).*tand(Side_View_Jacking_Angle)...
+    + (TFy.*cosd(Steer) + TFx.*sind(Steer)).*tan(Front_View_Jacking_Angle) - AFz) ./ Mass;
+
 YawAcc  = (TireMoment - AMz) ./ YawInertia;
 
 LongAccTot = LongAcc - LatVel .*YawVel;
