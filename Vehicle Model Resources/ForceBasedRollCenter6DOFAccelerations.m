@@ -1,11 +1,12 @@
-function [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot, VertAcc] = ...
+function [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot, VertAcc, RollAcc, PitchAcc] = ...
     ForceBasedRollCenter6DOFAccelerations( TFx, TFy, TMz, AFx, AFy, AMz, ... % Loads
         Wheelbase, TrackWidth, Steer, ...                         % Geometry
         Mass, YawInertia, CoG, ...                                % Inertia
-        LongVel, LatVel, YawVel )                                 % Velocities
+        LongVel, LatVel, YawVel)                                 % Velocities
 %% FroceBasedRollCenter6DOFAccelerations - Force Based Roll Center Accelerations
 % Computes planar motion accelerations for a 3DOF full track chassis model
-% 
+% https://www.overleaf.com/project/5e73ad44ea180c00018cb332 (Section 2.3.2)
+%
 % Inputs:
 %   TFx        - (n,4 numeric) Tire Longitudinal Force {T_F_y}    [N]
 %   TFy        - (n,4 numeric) Tire Lateral Force      {T_F_y}    [N]
@@ -71,20 +72,6 @@ end
 
 %% Computations
 
-%%% Matricies (FIXME)
-x_vector = [x;y;z];
-omega_vector = [roll,yaw,pitch];
-Is = [Ixx_s, 0, -Ixz_s; 0, Iyy_s, 0; -Izx_s, 0, Izz_s];
-
-[sum_Fx;sum_Fy;sum_Fz] = ms.*(x_vector_ddot + cross(omega_vector_dot,x_vector_dot)) + (muf + mur) .* ...
-    ([x_ddot;y_ddot;0] + cross([0;0;psi_dot],[x_dot;y_dot;0]));
-    
-[sum_Mx;sum_My;sum_Mz] = Is .* omega_vector_ddot + cross(omega_vector_dot, Is .* Omega_vector_dot) ...
-    + [0;0;Izz_s.*psi_ddot];
-
-mu(i)*zu_ddot(i) = kt(i).*(zr(i) - zu(i)) - kr(i).*(zu(i)-zc(i)) - ...
-    br(i).*(zu_dot(i)-zc_dot(i));
-
 %%% Tire Positions (n,4,3 numeric)
 TirePos = cat( 3, Wheelbase/2 + [-1, -1, 1, 1].*CoG(:,1), ...
                   [TrackWidth(:,1).*[1 -1]/2, TrackWidth(:,2).*[1 -1]/2], ...
@@ -99,20 +86,21 @@ TireMoment = sum( TireMoment(:,:,3) ) + sum(TMz,2);
 
 %%% Moments
 %Correct a or b
-Mx = sum((TFx.*sind(Steer) + TFy.*cosd(Steer)).*Front_View_Suspension_Arm...
+RollAcc = (sum((TFx.*sind(Steer) + TFy.*cosd(Steer)).*Front_View_Suspension_Arm...
     - (TFx.*cosd(Steer)-TFy.*sind(Steer)).*tand(Side_View_Jacking_Angle).*tw/2)...
     - AFy .* (Sprung_COG_Height + z) - AMz - (front_roll_stiffness + rear_roll_stiffness).*roll...
-    - (roll_dampening_coeff_front + roll_dampening_coeff_rear).*roll_speed;
+    - (roll_dampening_coeff_front + roll_dampening_coeff_rear).*roll_speed) / Ixx;
 
 %Correct a or b
-My = sum(-(TFx.*cosd(Steer) - TFy.*sind(Steer)).*Side_View_Suspension_Arm...
+PitchAcc = (sum(-(TFx.*cosd(Steer) - TFy.*sind(Steer)).*Side_View_Suspension_Arm...
     + (TFx.*sind(Steer) + TFy.*cosd(Steer)).*tand(Front_View_Jacking_Angle).* (a or b) )...
-    + AFx .* (Sprung_COG_Height + z) - AFz.*(a-L/2) - AMy - pitch_stiffness.*pitch - pitch_dampening.*pitch_velocity;
+    + AFx .* (Sprung_COG_Height + z) - AFz.*(a-L/2) - AMy ...
+    - pitch_stiffness.*pitch - pitch_dampening.*pitch_velocity) ./ Iyy;
 
 %Positive or negative trackwidth?
-Mz = sum((TFx.*cosd(Steer) - TFy.*sind(Steer)).*(-)tw/2 ...
+YawAcc = (sum((TFx.*cosd(Steer) - TFy.*sind(Steer)).*(-)tw/2 ...
     + (TFx.*sind(Steer) + TFy.*cosd(Steer)).*(a or -b) +TMz)...
-    - AFy .* (L/2 - a) - AMz; 
+    - AFy .* (L/2 - a) - AMz) ./ Izz; 
 
 %%% Chassis Accelerations
 LongAcc = ((sum( TFx.*cosd(Steer) - TFy.*sind(Steer), 2 ) - AFx) ./ Mass) + LatVel.*YawVel;
@@ -122,7 +110,19 @@ LatAcc  = ((sum( TFy.*cosd(Steer) + TFx.*sind(Steer), 2 ) - AFy) ./ Mass) - Long
 VertAcc = (sum(kr + br.*j + (TFx.*cosd(Steer) - TFy.*sind(Steer).*tand(Side_View_Jacking_Angle)...
     + (TFy.*cosd(Steer) + TFx.*sind(Steer)).*tan(Front_View_Jacking_Angle) - AFz) ./ Mass;
 
-YawAcc  = (TireMoment - AMz) ./ YawInertia;
-
 LongAccTot = LongAcc - LatVel .*YawVel;
 LatAccTot  = LatAcc  + LongVel.*YawVel;
+
+%%% Matricies (FIXME)
+% x_vector = [x;y;z];
+% omega_vector = [roll,yaw,pitch];
+% Is = [Ixx_s, 0, -Ixz_s; 0, Iyy_s, 0; -Izx_s, 0, Izz_s];
+% 
+% sum_F = ms.*(x_vector_ddot + cross(omega_vector_dot,x_vector_dot)) + (muf + mur) .* ...
+%     ([x_ddot;y_ddot;0] + cross([0;0;psi_dot],[x_dot;y_dot;0]));
+%     
+% sum_M = Is .* omega_vector_ddot + cross(omega_vector_dot, Is .* Omega_vector_dot) ...
+%     + [0;0;Izz_s.*psi_ddot];
+% 
+% mu(i)*zu_ddot(i) = kt(i).*(zr(i) - zu(i)) - kr(i).*(zu(i)-zc(i)) - ...
+%     br(i).*(zu_dot(i)-zc_dot(i));

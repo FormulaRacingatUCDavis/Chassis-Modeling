@@ -1,0 +1,6 @@
+function [z_1ddot, z_2ddot, z_uddot] = HalfCar(N_1, N_3, k_s1, z_s1, k_s2, z_s2, c_1, c_2, z_s1dot, z_s2dot, k_t1, k_t2, z_r1, z_r2, z_u, z_udot, a, theta, (a .* theta_dot); b, (b .* theta_dot), m_1, m_2. m_u, g)
+    z_1ddot = (N_1 - m_1 .* g - (k_s1 .* z_s1 + c_1 .* z_s1dot) - k_t1 .* (z_s1 - z_r1) + k_s1 .* z_u + c_1 .* z_udot - k_s1 .* (a .* theta) - c_1 .* (a .* theta_dot)) / m_1
+    z_2ddot = (N_3 - m_2 .* g - (k_s2 .* z_s2 + c_2 .* z_s2dot) - k_t2 .* (z_s2 - z_r2) + k_s2 .* z_u + c_2 .* z_udot + k_s2 .* (b .* theta) + c_2 .* (b .* theta_dot)) / m_2
+    z_uddot = (k_s1 .* z_s1 + c_1 .* z_s1dot + k_s2 .* z_s2 + c_2 .* z_s2dot - (k_s1 .* z_u + c_1 .* z_udot) - (k_s2 .* z_u + c_2 .* z_udot) + k_s1 .* (a .* theta) +c_1 .* (a .*theta_dot) - k_s2 .* (b .* theta) - c_2 .* (b .* theta_dot)) / m_u
+    theta_ddot = (-a .* (k_s1 .* z_s1 + c_1 .* z_s1dot - k_s1 .* z_u - c_1 .* z_udot + k_s1 .* (a .* theta) + c_1 .* (a .* theta_dot) + b .* (k_s2 .* z_s2 + c_2 .* z_s2dot - k_s2 .* z_u - c_2 .* z_udot - k_s2 .* (b .* theta) - c_2 .* (b .* theta_dot))) / I_yy
+end
