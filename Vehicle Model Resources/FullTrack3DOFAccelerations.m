@@ -41,24 +41,24 @@ function [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot] = ...
 %% Test Case
 if nargin == 0
     TFx = zeros(1,4);
-    TFy = [250, 250, 0, 0];
+    TFy = [0, 0, 0, 0];
     TMz = zeros(1,4);
     
     AFx = -100;
     AFy = 0;
     AMz = 0;
     
-    Wheelbase  = 1.575; 
+    Wheelbase  = 1.525; 
     TrackWidth = 1.22*ones(1,2);
-    Steer      = [18, 15, 1, -1];
+    Steer      = [0.5, -0.5, -0.5, 0.5];
     
     Mass       = 275;   
     YawInertia = 130; 
-    CoG        = [(0.47-0.5)*Wheelbase, 0, 0.25];
+    CoG        = [(0.5-0.5)*Wheelbase, 0, 0.25];
     
     LongVel = 15;
     LatVel  = 0;
-    YawVel  = 0.5;
+    YawVel  = 0;
     
     [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot] = ...
         FullTrack3DOFAccelerations( ...
@@ -72,9 +72,9 @@ end
 
 %% Computations
 %%% Tire Positions (n,4,3 numeric)
-TirePos = cat( 3, Wheelbase/2 + [-1, -1, 1, 1].*CoG(:,1), ...
-                  [TrackWidth(:,1).*[1 -1]/2, TrackWidth(:,2).*[1 -1]/2], ...
-                  zeros( size(Steer) ) );
+TirePos = cat( 3, (Wheelbase/2 + [-1 -1 1 1].*CoG(:,1)).*[1 1 -1 -1], ...
+          [TrackWidth(:,1).*[1 -1]/2, TrackWidth(:,2).*[1 -1]/2], ...
+          zeros( size(Steer) ) );
 
 %%% Tire Loads (n,4,3 numeric)
 TireLoad = cat( 3, TFx, TFy, zeros( size(Steer) ) );
@@ -84,8 +84,8 @@ TireMoment = cross(TirePos, TireLoad, 3);
 TireMoment = sum( TireMoment(:,:,3) ) + sum(TMz,2);
 
 %%% Chassis Accelerations
-LongAcc = ((sum( TFx.*cosd(Steer) - TFy.*sind(Steer), 2 ) - AFx) ./ Mass) + LatVel.*YawVel;
-LatAcc  = ((sum( TFy.*cosd(Steer) + TFx.*sind(Steer), 2 ) - AFy) ./ Mass) - LongVel.*YawVel;
+LongAcc = ((sum( TFx.*cosd(Steer) - TFy.*sind(Steer), 2 ) - AFx) ./ Mass);
+LatAcc  = ((sum( TFy.*cosd(Steer) + TFx.*sind(Steer), 2 ) - AFy) ./ Mass);
 YawAcc  = (TireMoment - AMz) ./ YawInertia;
 
 LongAccTot = LongAcc - LatVel .*YawVel;

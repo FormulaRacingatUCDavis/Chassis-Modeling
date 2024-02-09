@@ -1,14 +1,14 @@
 function [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot, VertAcc, RollAcc, PitchAcc] = ...
-    ForceBasedRollCenter6DOFAccelerations( TFx, TFy, TMz, AFx, AFy, AMz, AFz, AMy, ... % Loads
-        Wheelbase, TrackWidth, Steer, PercentFront, ...                      % Geometry
+    ForceBasedRollCenter6DOFAccelerations( TFx, TFy, TMz, AFx, AFy, AMy, AMz, AFz, ...       % Loads
+        Wheelbase, TrackWidth, TrackWidthTest, Steer, PercentFront, ...                      % Geometry
         Front_View_Suspension_Arm, z, Side_View_Suspension_Arm, Front_View_Jacking_Angle, ...
-        Side_View_Jacking_Angle, TrackWidthTest,...
+        Side_View_Jacking_Angle, ...
         Front_Roll_Stiffness, Rear_Roll_Stiffness, Roll_Dampening_Coeff_Front, ...
         Roll_Dampening_Coeff_Rear, Roll_Speed, Roll, ...
         Pitch_Stiffness, Pitch_Dampening, Pitch, Pitch_Velocity, ...
         Ride_Stiffness, Ride, Ride_Dampening, Ride_Velocity,...
-        Mass, YawInertia, CoG, Sprung_COG_Height, ...                        % Inertia
-        LongVel, LatVel, YawVel, Ixx, Iyy)                                             % Velocities
+        Mass, YawInertia, CoG, Sprung_COG_Height, ...                                       % Inertia
+        LongVel, LatVel, YawVel, Ixx, Iyy)                                                  % Velocities
 %% FroceBasedRollCenter6DOFAccelerations - Force Based Roll Center Accelerations
 % Computes force based roll center accelerations for a 6DOF full track chassis model
 % https://www.overleaf.com/project/5e73ad44ea180c00018cb332 (Section ?)
@@ -66,7 +66,7 @@ if nargin == 0
     AMy = 0;
     
     Wheelbase  = 1.575; 
-    TrackWidth = 1.22;%*ones(1,2);
+    TrackWidth = 1.22;               %*ones(1,2); (FIXME)did a quick fix for array sizes 
     TrackWidthTest = 1.22*ones(1,2);
     Steer      = [18, 15, 1, -1];
     
@@ -82,8 +82,8 @@ if nargin == 0
 
     Front_View_Suspension_Arm = 0;   %calculation
     Side_View_Suspension_Arm = 0;
-    Front_View_Jacking_Angle = 0; % check notes with joseph
-    Side_View_Jacking_Angle = 0; % check notes with joseph
+    Front_View_Jacking_Angle = 0;    
+    Side_View_Jacking_Angle = 0;    
     
     Front_Roll_Stiffness = 0;
     Rear_Roll_Stiffness = 0;
@@ -108,16 +108,16 @@ if nargin == 0
     z = 0;
     
     [LongAcc, LatAcc, YawAcc, LongAccTot, LatAccTot, VertAcc, RollAcc, PitchAcc] = ...
-    ForceBasedRollCenter6DOFAccelerations( TFx, TFy, TMz, AFx, AFy, AMz, AFz, AMy, ...
-        Wheelbase, TrackWidth, Steer, PercentFront, ...                     
+    ForceBasedRollCenter6DOFAccelerations( TFx, TFy, TMz, AFx, AFy, AMy, AMz, AFz, ...      
+        Wheelbase, TrackWidth, TrackWidthTest, Steer, PercentFront, ...                      
         Front_View_Suspension_Arm, z, Side_View_Suspension_Arm, Front_View_Jacking_Angle, ...
-        Side_View_Jacking_Angle, TrackWidthTest,...
+        Side_View_Jacking_Angle, ...
         Front_Roll_Stiffness, Rear_Roll_Stiffness, Roll_Dampening_Coeff_Front, ...
         Roll_Dampening_Coeff_Rear, Roll_Speed, Roll, ...
         Pitch_Stiffness, Pitch_Dampening, Pitch, Pitch_Velocity, ...
         Ride_Stiffness, Ride, Ride_Dampening, Ride_Velocity,...
-        Mass, YawInertia, CoG, Sprung_COG_Height, ...                        
-        LongVel, LatVel, YawVel, Ixx, Iyy)    
+        Mass, YawInertia, CoG, Sprung_COG_Height, ...                                      
+        LongVel, LatVel, YawVel, Ixx, Iyy)                    
     
     return;
 end
@@ -126,8 +126,8 @@ end
 
 %%% Tire Positions (n,4,3 numeric)
 TirePos = cat( 3, Wheelbase/2 + [-1, -1, 1, 1].*CoG(:,1), ...
-                  [TrackWidthTest(:,1).*[1 -1]/2, TrackWidthTest(:,2).*[1 -1]/2], ...
-                  zeros( size(Steer) ) );
+          [TrackWidthTest(:,1).*[1 -1]/2, TrackWidthTest(:,2).*[1 -1]/2], ...
+          zeros( size(Steer) ) );
 
 %%% Tire Loads (n,4,3 numeric)
 TireLoad = cat( 3, TFx, TFy, zeros( size(Steer) ) );
@@ -143,15 +143,8 @@ b = Wheelbase .* PercentFront;
 %%%Chassis Accelerations
 
 %%Yaw Acceleration
-%Note* in overleaf there is the option of a or b
-%Also tried to implement trackwidth correctly, don't know if I did
-%YawComputation1 = sum((TFx .* cosd(Steer) - TFy .* sind(Steer)) .* -TrackWidth ./ 2 ...
-    %+ (TFx .* sind(Steer) + TFy .* cosd(Steer)) .* (a) + TMz);
+%Note: in overleaf there is the option of a or b
 
-%YawComputation2 = sum((TFx .* cosd(Steer) - TFy .* sind(Steer)) .* TrackWidth ./ 2 ...
-    %+ (TFx .* sind(Steer) + TFy .* cosd(Steer)) .* (a) + TMz);
-
-%experimenting with Array sizes
 YawComputation1 = sum((TFx .* cosd(Steer) - TFy .* sind(Steer)) .* -TrackWidth ./ 2 ...
     + (TFx .* sind(Steer) + TFy .* cosd(Steer)) .* (a) + TMz);
 
@@ -187,6 +180,19 @@ VertAcc = (sum(Ride_Stiffness .* Ride + Ride_Dampening .* Ride_Velocity + (TFx .
 
 LongAccTot = LongAcc - LatVel .*YawVel;
 LatAccTot  = LatAcc  + LongVel.*YawVel;
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 %%% Matricies (FIXME) Other way of expressing computations
 % x_vector = [x;y;z];

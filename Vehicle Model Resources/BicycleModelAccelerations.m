@@ -1,5 +1,5 @@
 function [YawAcc,LatAccTot,LongAccTot]= BicycleModelAccelerations(LongForce,...
-    LatForce,SteeringWheelAngle,Mass,WheelBase,PercentFront)
+    LatForce, SteeringWheelAngle, Mass, WheelBase, PercentFront)
 %% Bicycle Model - Evaluate Accelerations
 % 
 % Inputs:
@@ -24,16 +24,16 @@ function [YawAcc,LatAccTot,LongAccTot]= BicycleModelAccelerations(LongForce,...
 %% Test Cases
 if nargin == 0
     %%% Test Inputs
-    LongitudinalForc = ; 
+    LongitudinalForc = 0; 
     
-    LateralForce = ; 
-    SteeringWheelAngle = ; 
+    LateralForce = 0; 
+    SteeringWheelAngle = 0; 
     
-    rho_g = ;
-    Mass = ;
+    rho_g = 0;
+    Mass = 0;
     
-    WheelBase = ;
-    PercentFront = ;
+    WheelBase = 0;
+    PercentFront = 0;
     
     fprintf('Executing Bicycle Model Accelerations() Test Cases: \n');
     
