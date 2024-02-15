@@ -84,8 +84,13 @@ TireMoment = cross(TirePos, TireLoad, 3);
 TireMoment = sum( TireMoment(:,:,3) ) + sum(TMz,2);
 
 %%% Chassis Accelerations
+<<<<<<< Updated upstream
 LongAcc = ((sum( TFx.*cosd(Steer) - TFy.*sind(Steer), 2 ) - AFx) ./ Mass);
 LatAcc  = ((sum( TFy.*cosd(Steer) + TFx.*sind(Steer), 2 ) - AFy) ./ Mass);
+=======
+LongAcc = ((sum( TFx.*cosd(Steer) - TFy.*sind(Steer), 2 ) - AFx) ./ Mass) + LatVel.*YawVel;
+LatAcc  = ((sum( TFy.*cosd(Steer) + TFx.*sind(Steer), 2 ) - AFy) ./ Mass) - LongVel.*YawVel;
+>>>>>>> Stashed changes
 YawAcc  = (TireMoment - AMz) ./ YawInertia;
 
 LongAccTot = LongAcc - LatVel .*YawVel;
